@@ -1,6 +1,7 @@
-mod command;
+mod cmd;
 
-use clap::{Arg, Command};
+use clap::{Command};
+use crate::cmd::Container;
 
 fn main() {
     let mut app = Command::new("rubo")
@@ -9,7 +10,8 @@ fn main() {
         .author("Zhang Wei")
         .about("Rust Utilities");
 
-    app.subcommands(command::all_commands());
+    let mut container = Container::new();
+    app.subcommands(container.commands());
 
-    println!("hello, rubo, v2");
+    println!("hello, rubo, v5");
 }
