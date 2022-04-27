@@ -1,17 +1,15 @@
 mod cmd;
 
-use clap::{Command};
+use clap::Command;
 use crate::cmd::Container;
 
 fn main() {
-    let mut app = Command::new("rubo")
+    let mut container = Container::new();
+    let app = Command::new("rubo")
         .subcommand_required(true)
+        .subcommands(container.commands())
         .version("1.0")
         .author("Zhang Wei")
         .about("Rust Utilities");
-
-    let mut container = Container::new();
-    app.subcommands(container.commands());
-
-    println!("hello, rubo, v5");
+    container.process(app.get_matches());
 }
