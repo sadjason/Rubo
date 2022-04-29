@@ -14,12 +14,14 @@ trait Cmd {
 }
 
 // commands
+mod cd;
 mod ls;
 mod cat;
 mod day;
+mod git;
 mod pod;
 mod sed;
-mod git;
+mod help;
 mod lark;
 mod todo;
 mod count;
@@ -34,12 +36,18 @@ impl Container {
         Container { commands: HashMap::new() }
     }
 
-    // TODO: 优雅的方式注册 command
-    pub fn commands(&mut self) -> Vec<Command<'static>> {
-        let cmd = Box::new(sed::Command);
-        let c1 = cmd.conf();
+    pub fn commands(&mut self) -> Vec<Conf> {
+        let mut vec = Vec::new();
+        self.add_cmd(sed::Command, &mut vec);
+        self.add_cmd(pod::Command, &mut vec);
+        vec
+    }
+
+    fn add_cmd(&mut self, cmd: impl Cmd + 'static, vec: &mut Vec<Command<'static>>) {
+        let cmd = Box::new(cmd);
+        let conf = cmd.conf();
         self.commands.insert(cmd.key(), cmd);
-        vec![c1]
+        vec.push(conf);
     }
 
     // TODO: error 处理
