@@ -7,6 +7,10 @@ pub(super) struct Command;
 impl Command {
     const NAME: &'static str = "pod";
 
+    const SUB_DEP: &'static str = "dep";
+    const SUB_RDEP: &'static str = "rdep";
+    const SUB_SEARCH: &'static str = "search";
+
     fn sub_cmd_conf_list(&self) -> Vec<Conf> {
         let arg_name = || {
             arg!(-n --name <NAME> "Pod name").required(true)
@@ -17,11 +21,11 @@ impl Command {
         let arg_depth = || {
             arg!(-d --depth <DEPTH> "Max display depth").required(false)
         };
-        let dep = Conf::new("dep")
+        let dep = Conf::new(Command::SUB_DEP)
             .args(&[arg_name(), arg_path(), arg_depth()])
             .about("Find dependencies for specified pod");
 
-        let rdep = Conf::new("rdep")
+        let rdep = Conf::new(Command::SUB_RDEP)
             .args(&[arg_name(), arg_path(), arg_depth()])
             .about("Find reserve dependencies for specified pod");
 
@@ -34,7 +38,7 @@ impl Command {
         let arg_name_only = || {
             arg!(--"name-only" "only display pod name").required(false)
         };
-        let search = Conf::new("search")
+        let search = Conf::new(Command::SUB_SEARCH)
             .args(&[arg_text(), arg_exclude(), arg_name_only()])
             .about("Search in Pods/ directory");
         vec![dep, rdep, search]
@@ -55,11 +59,12 @@ impl Cmd for Command {
 
     fn process(&self, args: &Args) {
         let (sub_cmd, sub_args) = args.subcommand().unwrap();
+        // 中转命令到 `rob pod`
         let mut rob = process::Command::new("rob");
         rob.arg("pod");
         match sub_cmd {
-            "dep" => {
-                rob.arg("dep");
+            Command::SUB_DEP => {
+                rob.arg(Command::SUB_DEP);
                 if let Some(pod) = sub_args.value_of("name") {
                     rob.arg("--name").arg(pod);
                 }
@@ -70,8 +75,8 @@ impl Cmd for Command {
                     rob.arg("--depth").arg(depth);
                 }
             },
-            "rdep" => {
-                rob.arg("rdep");
+            Command::SUB_RDEP => {
+                rob.arg(Command::SUB_RDEP);
                 if let Some(pod) = sub_args.value_of("name") {
                     rob.arg("--name").arg(pod);
                 }
@@ -82,8 +87,8 @@ impl Cmd for Command {
                     rob.arg("--depth").arg(depth);
                 }
             },
-            "search" => {
-                rob.arg("search");
+            Command::SUB_SEARCH => {
+                rob.arg(Command::SUB_SEARCH);
                 if let Some(text) = sub_args.value_of("text") {
                     rob.arg("--text").arg(text);
                 }
