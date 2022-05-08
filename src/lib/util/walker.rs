@@ -1,33 +1,100 @@
 
 // 参考：https://docs.rs/walkdir/latest/walkdir/
 
+
+
 use std::fs;
 use std::io;
+
 use std::path::{Path, PathBuf};
 use std::convert::AsRef;
+use std::ffi::OsString;
+use std::fs::{DirEntry, FileType, Metadata, Permissions};
+use std::iter::{IntoIterator};
+use std::os::unix::fs::MetadataExt;
+use once_cell::unsync::OnceCell;
 
 pub struct WakerEntry {
     // inner DirEntry
-    pub inner: fs::DirEntry,
+    inner: fs::DirEntry,
     // depth (from `1`) at which this entry was created relative to the root.
     pub depth: usize,
     // has next sibling
-    pub has_next_sibling: bool
+    pub has_next_sibling: bool,
+    // inner metadata
+    inner_metadata: OnceCell<Metadata>,
+}
+
+impl WakerEntry {
+    fn new(inner: fs::DirEntry, depth: usize, has_next_sibling: bool) -> Self {
+        WakerEntry {
+            inner,
+            depth,
+            has_next_sibling,
+            inner_metadata: OnceCell::new(),
+        }
+    }
+
+    fn metadata(&self) -> io::Result<&Metadata> {
+        self.inner_metadata.get_or_try_init(|| { self.inner.metadata() })
+    }
+
+    pub fn path(&self) -> PathBuf {
+        self.inner.path()
+    }
+
+    pub fn size(&self) -> io::Result<u64> {
+        self.metadata().map(|m|m.size())
+    }
+
+    pub fn file_name(&self) -> OsString {
+        self.inner.file_name()
+    }
+
+    pub fn file_type(&self) -> io::Result<FileType> {
+        self.metadata().map(|m| m.file_type())
+    }
+
+    pub fn permissions(&self) -> io::Result<Permissions> {
+        self.metadata().map(|m| m.permissions())
+    }
 }
 
 pub struct Walker {
     root: PathBuf,
-    max_depth: usize,
+    // 最大深度
+    max_depth: Option<usize>,
+    // 描述遇到 symbolic link 是否继续继续 walk
+    follow_symbolic: bool,
+    // 是否忽略隐藏文件
     ignore_hidden: bool,
+    // 按名字排序（开启后会影响效率）
+    sort_by_name: bool,
 }
 
 impl Walker {
     pub fn new<P: AsRef<Path>>(root: P) -> Self {
-        Walker { root: root.as_ref().to_path_buf(),  max_depth: 3, ignore_hidden: true }
+        Walker {
+            root: root.as_ref().to_path_buf(),
+            max_depth: None,
+            follow_symbolic: false,
+            ignore_hidden: true,
+            sort_by_name: true
+        }
     }
 
-    pub fn max_depth(&mut self, depth: usize) -> &mut Walker {
+    pub fn max_depth(&mut self, depth: Option<usize>) -> &mut Self {
         self.max_depth = depth;
+        self
+    }
+
+    pub fn ignore_hidden(&mut self, hidden: bool) -> &mut Self {
+        self.ignore_hidden = hidden;
+        self
+    }
+
+    pub fn follow_symbolic(&mut self, follow: bool) -> &mut Self {
+        self.follow_symbolic = follow;
         self
     }
 
@@ -36,19 +103,43 @@ impl Walker {
     }
 
     fn visit_dir(&self, dir: &Path, depth: usize, cb: &dyn Fn(WakerEntry)) -> io::Result<()> {
-        if depth > self.max_depth {
-            return Ok(())
-        }
-        let mut iter = fs::read_dir(dir)?.peekable();
-        while let Some(entry) = iter.next() {
-            let entry = entry?;
-            let path = entry.path();
-            if self.ignore_hidden && entry.file_name().to_str().unwrap_or(".").starts_with('.') {
-                continue
+        if let Some(max_depth) = self.max_depth {
+            if depth > max_depth {
+                return Ok(())
             }
-            cb(WakerEntry { inner: entry, depth, has_next_sibling: iter.peek().is_some() });
-            if path.is_dir() {
+        }
+
+        let handle_entry = |entry: DirEntry, has_next_sibling: bool| -> io::Result<()> {
+            let path = entry.path();
+            if self.ignore_hidden && entry.file_name().to_str().unwrap_or("unknown").starts_with('.') {
+                return Ok(())
+            }
+            let entry = WakerEntry::new(entry, depth, has_next_sibling);
+            let file_type = entry.file_type()?;
+            cb(entry);
+            if file_type.is_dir() {
                 self.visit_dir(&path, depth + 1, cb)?;
+            } else if file_type.is_symlink() && self.follow_symbolic {
+                self.visit_dir(&path, depth + 1, cb)?;
+            } else {
+                // do nothing
+            }
+            return Ok(())
+        };
+
+        if self.sort_by_name {
+            let mut entries = fs::read_dir(dir)?
+                .collect::<Result<Vec<_>, io::Error>>()?;
+            entries.sort_by(|a,b| a.path().cmp(&b.path()));
+            let mut iter = entries.into_iter().peekable();
+            while let Some(entry) = iter.next() {
+                handle_entry(entry, iter.peek().is_some())?;
+            }
+        } else {
+            let mut iter = fs::read_dir(dir)?.peekable();
+            while let Some(entry) = iter.next() {
+                let entry = entry?;
+                handle_entry(entry, iter.peek().is_some())?;
             }
         }
         Ok(())

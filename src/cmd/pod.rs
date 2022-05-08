@@ -102,6 +102,6 @@ impl Cmd for Command {
 
             }
         }
-        rob.spawn().unwrap().wait();
+        rob.spawn().unwrap().wait().unwrap();
     }
 }

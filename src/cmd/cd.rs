@@ -1,4 +1,4 @@
-use clap::arg;
+
 use super::{Cmd, Args, Conf};
 
 pub(super) struct Command;
@@ -18,7 +18,7 @@ impl Cmd for Command {
             .about("utility about cd")
     }
 
-    fn process(&self, args: &Args) {
+    fn process(&self, _args: &Args) {
         // 参考 cd
     }
 }

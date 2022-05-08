@@ -1,9 +1,13 @@
 use std::collections::HashMap;
+
 use std::fs::{FileType, Permissions};
+use std::io;
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
-use std::path::Path;
-use crate::lib::util::walker::{Walker, WakerEntry};
+
+use crate::lib::util::{walker::{Walker, WakerEntry}};
+
 use ansi_term::{Colour, Style, ANSIString};
+use bytesize::ByteSize;
 
 type ColorChars = [char; 22];
 
@@ -73,9 +77,8 @@ fn get_color_chars(file_type: FileType, permissions: Permissions, map: &ColorCha
     Some((map[fg_i].clone(), map[bg_i].clone()))
 }
 
-pub fn walk<P: AsRef<Path>>(dir: P) {
-    let mut walker = Walker::new(dir);
-
+pub fn walk(walker: Walker) -> io::Result<()> {
+    let light_gray = Colour::RGB(94, 94, 94);
     let color_chars: Option<ColorChars> =
         if let Some(s) = std::env::var("LSCOLORS").ok() {
             if s.chars().count() == 22 {
@@ -93,23 +96,12 @@ pub fn walk<P: AsRef<Path>>(dir: P) {
         } else {
             None
         };
-    let display_file_name = |entry: &WakerEntry| -> String {
-        let file_name= entry.inner.file_name();
-        let file_name= file_name.to_str().unwrap_or("NULL");
-        if color_chars.is_none() { return file_name.to_string() }
-        let file_type = entry.inner.file_type().ok();
-        let permissions = entry.inner.metadata().ok().map(|m| m.permissions());
-        if file_type.is_none() { return file_name.to_string() }
-        if permissions.is_none() { return file_name.to_string() }
-        if let Some(cs) = get_color_chars(file_type.unwrap(), permissions.unwrap(), &color_chars.unwrap()) {
-            to_ansi_string(file_name, cs.0, cs.1).to_string()
-        } else {
-            file_name.to_string()
-        }
-    };
+
+    // 用于记录 entry 的下面是否有兄弟
     type DepthSiblings = HashMap<usize, bool>;
-    let depth_siblings: DepthSiblings = HashMap::new();
-    let print = |entry: WakerEntry| {
+    let depth_siblings= DepthSiblings::new();
+
+    let displaying_prefix = |entry: &WakerEntry| -> String {
         let mut prefix: Vec<char> = Vec::new();
         let (nbsp, space) = (char::from(0xa0), ' ');
         for i in 1..entry.depth {
@@ -122,12 +114,67 @@ pub fn walk<P: AsRef<Path>>(dir: P) {
         let c = if entry.has_next_sibling { '├' } else { '└' };
         prefix.extend_from_slice(&[c, '─', '─', space]);
         let prefix= prefix.into_iter().collect::<String>();
-        let prefix = prefix.as_str();
-        let line_color = Colour::RGB(94, 94, 94); // light gray
+        Style::from(light_gray).paint(prefix).to_string()
+    };
+
+    let displaying_name = |entry: &WakerEntry| -> String {
+        let file_name= entry.file_name();
+        let file_name= file_name.to_str().unwrap_or("NULL");
+        if color_chars.is_none() { return file_name.to_string() }
+        let file_type = entry.file_type().ok();
+        let permissions = entry.permissions().ok();
+        if file_type.is_none() { return file_name.to_string() }
+        if permissions.is_none() { return file_name.to_string() }
+        let mut str: String;
+        if let Some(cs) = get_color_chars(file_type.unwrap(), permissions.unwrap(), &color_chars.unwrap()) {
+            str = to_ansi_string(file_name, cs.0, cs.1).to_string();
+        } else {
+            str = file_name.to_string();
+        }
+        let link_to = file_type
+            .and_then(|ft| if ft.is_symlink() { Some(()) } else { None })
+            .and_then(|_| std::fs::read_link(entry.path()).ok())
+            .and_then(|path| path.to_str().map(|s| s.to_owned()));
+        if let Some(link) = link_to {
+            let s = format!(" -> {}", link.as_str());
+            let s = Style::from(light_gray).paint(s).to_string();
+            str.push_str(s.as_str());
+        }
+        str
+    };
+
+    let displaying_size = |entry: &WakerEntry| -> String {
+        let size = entry.file_type().ok()
+            .and_then(|ft| -> Option<u64> {
+                if ft.is_file() && !ft.is_symlink() {
+                    entry.size().ok()
+                } else {
+                    None
+                }
+            });
+        if let Some(s) = size {
+            // style 1:
+            // format!(
+            //     " {}{}{}",
+            //     Style::from(light_gray).paint("("),
+            //     Style::from(Colour::Red).bold().paint(ByteSize(s).to_string()),
+            //     Style::from(light_gray).paint(")")
+            // )
+
+            // style 2:
+            let str = format!(" ({})", ByteSize(s));
+            Style::from(light_gray).paint(str).to_string()
+        } else {
+            "".to_string()
+        }
+    };
+
+    let print = |entry: WakerEntry| {
         println!(
-            "{}{}",
-            Style::from(line_color).paint(prefix),
-            display_file_name(&entry)
+            "{}{}{}",
+            displaying_prefix(&entry),
+            displaying_name(&entry),
+            displaying_size(&entry)
         );
 
         // TODO: 此处想直接 insert，失败，就采用 unsafe 的方式绕过
@@ -135,5 +182,6 @@ pub fn walk<P: AsRef<Path>>(dir: P) {
         let mu = &depth_siblings as *const DepthSiblings as *mut DepthSiblings;
         unsafe { (*mu).insert(entry.depth, entry.has_next_sibling); }
     };
-    walker.max_depth(3).start(&print).unwrap();
+    println!("{}", Style::from(light_gray).paint("."));
+    walker.start(&print)
 }
