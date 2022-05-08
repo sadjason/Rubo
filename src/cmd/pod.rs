@@ -10,17 +10,12 @@ impl Command {
     const SUB_DEP: &'static str = "dep";
     const SUB_RDEP: &'static str = "rdep";
     const SUB_SEARCH: &'static str = "search";
+    const SUB_CLEAN: &'static str = "clean";
 
     fn sub_cmd_conf_list(&self) -> Vec<Conf> {
-        let arg_name = || {
-            arg!(-n --name <NAME> "Pod name").required(true)
-        };
-        let arg_path = || {
-            arg!(-p --path <PATH> "Path to Podfile.lock").required(false)
-        };
-        let arg_depth = || {
-            arg!(-d --depth <DEPTH> "Max display depth").required(false)
-        };
+        let arg_name = || { arg!(-n --name <NAME> "Pod name").required(true) };
+        let arg_path = || { arg!(-p --path <PATH> "Path to Podfile.lock").required(false) };
+        let arg_depth = || { arg!(-d --depth <DEPTH> "Max display depth").required(false) };
         let dep = Conf::new(Command::SUB_DEP)
             .args(&[arg_name(), arg_path(), arg_depth()])
             .about("Find dependencies for specified pod");
@@ -29,19 +24,16 @@ impl Command {
             .args(&[arg_name(), arg_path(), arg_depth()])
             .about("Find reserve dependencies for specified pod");
 
-        let arg_text = || {
-            arg!(-t --text <TEXT> "Search pattern").required(true)
-        };
-        let arg_exclude = || {
-            arg!(-e --excludes <POD_NAMES> "exclude pod names").required(false)
-        };
-        let arg_name_only = || {
-            arg!(--"name-only" "only display pod name").required(false)
-        };
+        let arg_text = || { arg!(-t --text <TEXT> "Search pattern").required(true) };
+        let arg_exclude = || { arg!(-e --excludes <POD_NAMES> "exclude pod names").required(false) };
+        let arg_name_only = || { arg!(--"name-only" "only display pod name").required(false) };
         let search = Conf::new(Command::SUB_SEARCH)
             .args(&[arg_text(), arg_exclude(), arg_name_only()])
             .about("Search in Pods/ directory");
-        vec![dep, rdep, search]
+
+        let clean = Conf::new(Command::SUB_CLEAN)
+            .about("Clean pods and free disk");
+        vec![dep, rdep, search, clean]
     }
 }
 
@@ -98,6 +90,13 @@ impl Cmd for Command {
                 if sub_args.occurrences_of("name-only") > 0 {
                     rob.arg("--name-only");
                 }
+            },
+            Command::SUB_CLEAN => {
+                // rob.arg(Command::SUB_CLEAN);
+                // 策略一：基于 last-access 处理
+                // 策略二：基于版本号（譬如低于 5.11 版本）
+                // 策略三：基于当前项目中使用的使用状况（ios-client、LarkMessenger）
+                println!("暂时未实现");
             },
             _ => {
 

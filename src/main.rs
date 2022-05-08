@@ -1,4 +1,5 @@
 mod cmd;
+mod lib;
 
 use clap::Command;
 use crate::cmd::Container;

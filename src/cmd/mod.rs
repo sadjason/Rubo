@@ -23,7 +23,10 @@ mod pod;
 mod sed;
 mod help;
 mod lark;
+mod life;
 mod todo;
+mod tree;
+mod work;
 mod count;
 mod strip;
 
@@ -40,6 +43,7 @@ impl Container {
         let mut vec = Vec::new();
         self.add_cmd(sed::Command, &mut vec);
         self.add_cmd(pod::Command, &mut vec);
+        self.add_cmd(tree::Command, &mut vec);
         vec
     }
 
