@@ -3,6 +3,7 @@ mod lib;
 
 use clap::Command;
 use crate::cmd::Container;
+use crate::lib::pod::lockfile::Lockfile;
 
 fn main() {
     let mut container = Container::new();

@@ -3,5 +3,5 @@
 ///   - 解析 Podfile.lock
 ///
 
-mod lockfile;
-mod dep_analyzer;
+pub(crate) mod lockfile;
+pub(crate) mod dep_analyzer;
