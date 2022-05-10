@@ -24,6 +24,7 @@ mod sed;
 mod help;
 mod lark;
 mod life;
+mod open;
 mod todo;
 mod tree;
 mod work;

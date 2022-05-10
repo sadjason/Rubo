@@ -1,4 +1,3 @@
-
 use super::{Cmd, Args, Conf};
 
 pub(super) struct Command;
@@ -15,10 +14,11 @@ impl Cmd for Command {
     fn conf(&self) -> Conf {
         Conf::new(Command::NAME)
             .arg_required_else_help(true)
-            .about("utility about cd")
+            .about("just like wd")
     }
 
     fn process(&self, _args: &Args) {
+        // 类似于 `wd`
         // 参考 cd
     }
 }

@@ -26,9 +26,11 @@ impl Command {
 
         let arg_text = || { arg!(-t --text <TEXT> "Search pattern").required(true) };
         let arg_exclude = || { arg!(-e --excludes <POD_NAMES> "exclude pod names").required(false) };
+        let arg_a = || { arg!(-A --"after-context" <NUM> "show NUM lines after each match").required(false) };
+        let arg_b = || { arg!(-B --"before-context" <NUM> "Show NUM lines before each match").required(false) };
         let arg_name_only = || { arg!(--"name-only" "only display pod name").required(false) };
         let search = Conf::new(Command::SUB_SEARCH)
-            .args(&[arg_text(), arg_exclude(), arg_name_only()])
+            .args(&[arg_text(), arg_exclude(), arg_a(), arg_b(), arg_name_only()])
             .about("Search in Pods/ directory");
 
         let clean = Conf::new(Command::SUB_CLEAN)
@@ -86,6 +88,12 @@ impl Cmd for Command {
                 }
                 if let Some(excludes) = sub_args.value_of("excludes") {
                     rob.arg("--excludes").arg(excludes);
+                }
+                if let Some(before) = sub_args.value_of("before-context") {
+                    rob.arg("-B").arg(before);
+                }
+                if let Some(after) = sub_args.value_of("after-context") {
+                    rob.arg("-A").arg(after);
                 }
                 if sub_args.occurrences_of("name-only") > 0 {
                     rob.arg("--name-only");
