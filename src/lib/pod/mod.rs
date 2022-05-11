@@ -4,4 +4,4 @@
 ///
 
 pub(crate) mod lockfile;
-pub(crate) mod dep_analyzer;
+pub(crate) mod dep;

@@ -7,6 +7,7 @@ use anyhow::{anyhow};
 use regex::Regex;
 
 pub(crate) struct PodItem {
+    #[allow(dead_code)]
     pub(crate) name: String,
     pub(crate) vers: Option<String>,
     pub(crate) parents: HashSet<String>,
@@ -137,6 +138,7 @@ impl Lockfile {
     }
 
     // 解析 EXTERNAL SOURCES 里的内容
+    #[allow(dead_code)]
     pub(crate) fn external_sources(&self) -> anyhow::Result<HashMap<String, ExternalSource>> {
         let sources = &self.root["EXTERNAL SOURCES"];
         let hash = sources.as_hash().ok_or(anyhow!(parse_failed::UNEXPECTED_TYPE))?;

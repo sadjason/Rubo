@@ -1,6 +1,8 @@
+use std::path::PathBuf;
+use std::process;
 use clap::arg;
 use super::{Cmd, Args, Conf};
-use std::process;
+use crate::lib::pod::dep;
 
 pub(super) struct Command;
 
@@ -57,28 +59,24 @@ impl Cmd for Command {
         let mut rob = process::Command::new("rob");
         rob.arg("pod");
         match sub_cmd {
-            Command::SUB_DEP => {
-                rob.arg(Command::SUB_DEP);
-                if let Some(pod) = sub_args.value_of("name") {
-                    rob.arg("--name").arg(pod);
-                }
-                if let Some(path) = sub_args.value_of("path") {
-                    rob.arg("--path").arg(path);
-                }
-                if let Some(depth) = sub_args.value_of("depth") {
-                    rob.arg("--depth").arg(depth);
-                }
-            },
-            Command::SUB_RDEP => {
-                rob.arg(Command::SUB_RDEP);
-                if let Some(pod) = sub_args.value_of("name") {
-                    rob.arg("--name").arg(pod);
-                }
-                if let Some(path) = sub_args.value_of("path") {
-                    rob.arg("--path").arg(path);
-                }
-                if let Some(depth) = sub_args.value_of("depth") {
-                    rob.arg("--depth").arg(depth);
+            Command::SUB_DEP | Command::SUB_RDEP => {
+                let path =
+                    if let Some(p) = sub_args.value_of("path") {
+                        PathBuf::from(p).to_path_buf()
+                    } else {
+                        let mut p = std::env::current_dir()
+                            .unwrap_or(PathBuf::from("."));
+                        p.push("Podfile.lock");
+                        p
+                    };
+                let target= sub_args.value_of("name").unwrap();
+                let max_depth = sub_args.value_of("depth")
+                    .and_then(|d| d.to_string().parse::<usize>().ok())
+                    .unwrap_or(999_999);
+                if let Command::SUB_DEP = sub_cmd {
+                    dep::print_deps(path, target, max_depth).unwrap();
+                } else {
+                    dep::print_reserve_deps(path, target, max_depth).unwrap();
                 }
             },
             Command::SUB_SEARCH => {
@@ -98,6 +96,7 @@ impl Cmd for Command {
                 if sub_args.occurrences_of("name-only") > 0 {
                     rob.arg("--name-only");
                 }
+                rob.spawn().unwrap().wait().unwrap();
             },
             Command::SUB_CLEAN => {
                 // rob.arg(Command::SUB_CLEAN);
@@ -110,6 +109,5 @@ impl Cmd for Command {
 
             }
         }
-        rob.spawn().unwrap().wait().unwrap();
     }
 }
