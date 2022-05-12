@@ -1,8 +1,10 @@
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
 use std::fs::{FileType, Permissions};
 use std::io;
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
+use std::rc::Rc;
 
 use crate::lib::util::{walker::{Walker, WakerEntry}};
 
@@ -99,13 +101,13 @@ pub fn walk(walker: Walker) -> io::Result<()> {
 
     // 用于记录 entry 的下面是否有兄弟
     type DepthSiblings = HashMap<usize, bool>;
-    let depth_siblings= DepthSiblings::new();
+    let depth_siblings= Rc::new(RefCell::new(DepthSiblings::new()));
 
     let displaying_prefix = |entry: &WakerEntry| -> String {
         let mut prefix: Vec<char> = Vec::new();
         let (nbsp, space) = (char::from(0xa0), ' ');
         for i in 1..entry.depth {
-            if *depth_siblings.get(&i).unwrap_or(&false) {
+            if *depth_siblings.borrow().get(&i).unwrap_or(&false) {
                 prefix.extend_from_slice(&['│', nbsp, nbsp, space]);
             } else {
                 prefix.extend_from_slice(&[space; 4]);
@@ -169,7 +171,15 @@ pub fn walk(walker: Walker) -> io::Result<()> {
         }
     };
 
-    let print = |entry: WakerEntry| {
+    let dir_count= Cell::new(0);
+    let file_count= Cell::new(0);
+    let link_count= Cell::new(0);
+    let handle = |entry: WakerEntry| {
+        if let Ok(ft) = entry.file_type() {
+            if ft.is_file() { file_count.set(file_count.get() + 1); }
+            if ft.is_dir() { dir_count.set(dir_count.get() + 1); }
+            if ft.is_symlink() { link_count.set(link_count.get() + 1); }
+        }
         println!(
             "{}{}{}",
             displaying_prefix(&entry),
@@ -177,11 +187,25 @@ pub fn walk(walker: Walker) -> io::Result<()> {
             displaying_size(&entry)
         );
 
-        // TODO: 此处想直接 insert，失败，就采用 unsafe 的方式绕过
-        // depth_siblings.insert(entry.depth, entry.has_next_sibling);
-        let mu = &depth_siblings as *const DepthSiblings as *mut DepthSiblings;
-        unsafe { (*mu).insert(entry.depth, entry.has_next_sibling); }
+        let depths = &mut depth_siblings.borrow_mut();
+        depths.insert(entry.depth, entry.has_next_sibling);
     };
     println!("{}", Style::from(light_gray).paint("."));
-    walker.start(&print)
+    walker.start(&handle)?;
+
+    // print end line
+    let (dir_count, file_count, link_count) =
+        (dir_count.get(), file_count.get(), link_count.get());
+    let endline = format!(
+        "\n{} {}, {} {}, {} {}",
+        dir_count,
+        if dir_count == 1 { "directory" } else { "directories" },
+        file_count,
+        if file_count == 1 { "file" } else { "files" },
+        link_count,
+        if link_count == 1 { "symbolic link" } else { "symbolic links" }
+    );
+    println!("{}", Style::from(light_gray).paint(endline));
+
+    Ok(())
 }

@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::path::Path;
-use super::lockfile::Lockfile;
-use crate::lib::pod::lockfile::PodItem;
 use std::cell::RefCell;
 use std::rc::Rc;
 use anyhow;
+use super::lockfile::Lockfile;
+use crate::lib::pod::lockfile::PodItem;
 
 pub(crate) fn print_deps<P: AsRef<Path>>(
     path: P,

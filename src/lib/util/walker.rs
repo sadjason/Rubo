@@ -1,11 +1,5 @@
-
-// 参考：https://docs.rs/walkdir/latest/walkdir/
-
-
-
 use std::fs;
 use std::io;
-
 use std::path::{Path, PathBuf};
 use std::convert::AsRef;
 use std::ffi::OsString;
@@ -25,6 +19,8 @@ pub struct WakerEntry {
     inner_metadata: OnceCell<Metadata>,
 }
 
+// 参考：https://docs.rs/walkdir/latest/walkdir/
+
 impl WakerEntry {
     fn new(inner: fs::DirEntry, depth: usize, has_next_sibling: bool) -> Self {
         WakerEntry {
@@ -35,7 +31,7 @@ impl WakerEntry {
         }
     }
 
-    fn metadata(&self) -> io::Result<&Metadata> {
+    pub fn metadata(&self) -> io::Result<&Metadata> {
         self.inner_metadata.get_or_try_init(|| { self.inner.metadata() })
     }
 
@@ -79,7 +75,7 @@ impl Walker {
             max_depth: None,
             follow_symbolic: false,
             ignore_hidden: true,
-            sort_by_name: true
+            sort_by_name: true,
         }
     }
 

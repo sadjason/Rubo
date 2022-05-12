@@ -1,24 +1,16 @@
-// https://github.com/solidiquis/erdtree
-// - colorize: 颜色和 terminal 主题对应（即 ls 看到的颜色）
-// - 对 tree 进行简化：
-//   - L 默认 3
-//   - du 开启
-
 /// 开发要点：
 /// - colorize，即 print 的 entry 和 `ls` 的颜色保持一致，
 ///   参考 https://gist.github.com/thomd/7667642，定义在 $LSCOLORS 中
 /// - 简化 tree 参数：
 ///   - `-L` 默认值配置为 3
 ///   - `-du` 默认开启
-///
+/// 借鉴了点 https://github.com/solidiquis/erdtree，但感觉比这个做得好一些
 
-use clap::arg;
-use super::{Cmd, Args, Conf};
 use std::env;
-
 use std::path::{PathBuf};
-use crate::lib::tree;
-use crate::lib::util::walker::Walker;
+use clap::arg;
+use crate::cmd::{Cmd, Args, Conf};
+use crate::lib::{tree, util::walker::Walker};
 
 pub(super) struct Command;
 
@@ -40,7 +32,7 @@ impl Cmd for Command {
                 arg!(-p --path <PATH> "Path to directory. Defaults to current working directory")
                     .required(false)
             )
-            .arg(arg!(-d --depth <DEPTH> "Max display depth of the directory tree. Defaults to 3")
+            .arg(arg!(-L --level <LEVEL> "Max display depth of the directory tree")
                 .required(false)
             )
             .arg(arg!(-a --all "All files are printed. By default tree does not print hidden files (those beginning with a dot '.')")
@@ -64,7 +56,7 @@ impl Cmd for Command {
 
         // parse `depth`
         let depth =
-            if let Some(d) = args.value_of("depth") {
+            if let Some(d) = args.value_of("level") {
                 d.parse::<usize>().ok()
             } else {
                 None

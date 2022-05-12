@@ -42,7 +42,6 @@ impl Container {
 
     pub fn commands(&mut self) -> Vec<Conf> {
         let mut vec = Vec::new();
-        self.add_cmd(sed::Command, &mut vec);
         self.add_cmd(pod::Command, &mut vec);
         self.add_cmd(tree::Command, &mut vec);
         vec
