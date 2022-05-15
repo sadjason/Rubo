@@ -1,2 +1,1 @@
-// 裁剪 RustPB
-// ru strip
+// 代码裁剪

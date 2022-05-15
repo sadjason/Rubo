@@ -1,9 +1,8 @@
 
-// life log     日记
-// life plan    计划
-// life tips    记录
-// life buy     随时记录要买的东西
-// life wife    happy wife, happy life
+// life log
+// life plan
+// life tips
+// life buy
 
 // life.sqlite3
 // schema log
@@ -21,4 +20,3 @@
 // schema buy
 //   - created_at
 //   - updated_at
-// schema wife

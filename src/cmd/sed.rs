@@ -1,4 +1,4 @@
-use super::{Cmd, Args, Conf};
+use super::{Cmd, CmdResult, Args, Conf};
 
 pub(super) struct Command;
 
@@ -16,7 +16,8 @@ impl Cmd for self::Command {
         Conf::new(NAME)
     }
 
-    fn process(&self, _args: &Args) {
+    fn process(&self, _args: &Args) -> CmdResult {
         println!("hello, my name is {}", NAME);
+        Ok(())
     }
 }

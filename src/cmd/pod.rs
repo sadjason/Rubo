@@ -1,6 +1,7 @@
 use std::path::PathBuf;
+use anyhow::anyhow;
 use clap::arg;
-use crate::cmd::{Cmd, Args, Conf};
+use crate::cmd::{Cmd, CmdResult, Args, Conf};
 use crate::lib::pod::dep;
 
 pub(super) struct Command;
@@ -53,7 +54,7 @@ impl Cmd for Command {
             .about("Pod Utilities")
     }
 
-    fn process(&self, args: &Args) {
+    fn process(&self, args: &Args) -> CmdResult {
         let (sub_cmd, sub_args) = args.subcommand().unwrap();
         match sub_cmd {
             Command::SUB_DEP | Command::SUB_RDEP => {
@@ -66,14 +67,17 @@ impl Cmd for Command {
                         p.push("Podfile.lock");
                         p
                     };
+                if !path.exists() {
+                    return Err(anyhow!("{:?} is not exists", &path));
+                }
                 let target= sub_args.value_of("name").unwrap();
                 let max_depth = sub_args.value_of("depth")
                     .and_then(|d| d.to_string().parse::<usize>().ok())
                     .unwrap_or(999_999_999);
                 if let Command::SUB_DEP = sub_cmd {
-                    dep::print_deps(path, target, max_depth).unwrap();
+                    dep::print_deps(path, target, max_depth)
                 } else {
-                    dep::print_reserve_deps(path, target, max_depth).unwrap();
+                    dep::print_reserve_deps(path, target, max_depth)
                 }
             },
             Command::SUB_SEARCH => {
@@ -98,6 +102,7 @@ impl Cmd for Command {
                 // rob.arg("pod");
                 // rob.spawn().unwrap().wait().unwrap();
                 println!("暂时未实现");
+                Ok(())
             },
             Command::SUB_CLEAN => {
                 // rob.arg(Command::SUB_CLEAN);
@@ -105,10 +110,9 @@ impl Cmd for Command {
                 // 策略二：基于版本号（譬如低于 5.11 版本）
                 // 策略三：基于当前项目中使用的使用状况
                 println!("暂时未实现");
+                Ok(())
             },
-            _ => {
-
-            }
+            _ => { Ok(()) }
         }
     }
 }

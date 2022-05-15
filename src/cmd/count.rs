@@ -7,7 +7,7 @@
 // 统计时间，ref: https://github.com/sharkdp/hyperfine
 // ru count time
 
-use super::{Cmd, Args, Conf};
+use super::{Cmd, CmdResult, Args, Conf};
 
 pub(super) struct Command;
 
@@ -27,7 +27,8 @@ impl Cmd for Command {
         Conf::new(Command::NAME)
     }
 
-    fn process(&self, _args: &Args) {
+    fn process(&self, _args: &Args) -> CmdResult {
         println!("hello, my name is {}", Command::NAME);
+        Ok(())
     }
 }

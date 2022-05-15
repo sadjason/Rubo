@@ -9,7 +9,7 @@
 use std::env;
 use std::path::{PathBuf};
 use clap::arg;
-use crate::cmd::{Cmd, Args, Conf};
+use crate::cmd::{Cmd, CmdResult, Args, Conf};
 use crate::lib::{tree, util::walker::Walker};
 
 pub(super) struct Command;
@@ -44,7 +44,7 @@ impl Cmd for Command {
             .about("List contents of directories in a tree-like format.")
     }
 
-    fn process(&self, args: &Args) {
+    fn process(&self, args: &Args) -> CmdResult {
         // parse `path`
         let dir =
             if let Some(p) = args.value_of("path") {
@@ -69,6 +69,6 @@ impl Cmd for Command {
         // parse `follow-symbolic`
         walker.follow_symbolic(args.occurrences_of("follow-symbolic") > 0);
 
-        tree::walk(walker).unwrap();
+        tree::walk(walker)
     }
 }

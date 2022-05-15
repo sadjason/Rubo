@@ -4,13 +4,14 @@ use clap::{Command, ArgMatches};
 
 type Conf = Command<'static>;
 type Args = ArgMatches;
+type CmdResult = anyhow::Result<()>;
 
 trait Cmd {
     fn key(&self) -> String;
     // 关于 command 的配置
     fn conf(&self) -> Conf;
     // 处理
-    fn process(&self, args: &Args);
+    fn process(&self, args: &Args) -> anyhow::Result<()>;
 }
 
 // commands
@@ -54,16 +55,12 @@ impl Container {
         vec.push(conf);
     }
 
-    // TODO: error 处理
     pub fn process(&self, args: Args) {
-        match args.subcommand() {
-            Some((sub_cmd, sub_args)) => {
-                let key = sub_cmd.to_string();
-                let cmd = self.commands.get(&key).unwrap();
-                cmd.process(sub_args);
-            },
-            None => {
-
+        if let Some((sub_cmd, sub_args)) = args.subcommand() {
+            let key = sub_cmd.to_string();
+            let cmd = self.commands.get(&key).unwrap();
+            if let Err(e) = cmd.process(sub_args) {
+                println!("process {} failed. err: {:?}", &sub_cmd, e);
             }
         }
     }

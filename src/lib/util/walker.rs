@@ -31,7 +31,7 @@ impl WakerEntry {
         }
     }
 
-    pub fn metadata(&self) -> io::Result<&Metadata> {
+    fn metadata(&self) -> io::Result<&Metadata> {
         self.inner_metadata.get_or_try_init(|| { self.inner.metadata() })
     }
 

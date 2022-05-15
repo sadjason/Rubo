@@ -2,7 +2,6 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
 use std::fs::{FileType, Permissions};
-use std::io;
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::rc::Rc;
 
@@ -72,14 +71,18 @@ fn color_index(file_type: FileType, permissions: Permissions) -> Option<usize> {
     None
 }
 
-fn get_color_chars(file_type: FileType, permissions: Permissions, map: &ColorChars) -> Option<(char, char)> {
+fn get_color_chars(
+    file_type: FileType,
+    permissions: Permissions,
+    map: &ColorChars
+) -> Option<(char, char)> {
     let index = color_index(file_type, permissions)?;
     let fg_i = (index - 1) * 2;
     let bg_i = fg_i + 1;
     Some((map[fg_i].clone(), map[bg_i].clone()))
 }
 
-pub fn walk(walker: Walker) -> io::Result<()> {
+pub fn walk(walker: Walker) -> anyhow::Result<()> {
     let light_gray = Colour::RGB(94, 94, 94);
     let color_chars: Option<ColorChars> =
         if let Some(s) = std::env::var("LSCOLORS").ok() {
@@ -128,7 +131,12 @@ pub fn walk(walker: Walker) -> io::Result<()> {
         if file_type.is_none() { return file_name.to_string() }
         if permissions.is_none() { return file_name.to_string() }
         let mut str: String;
-        if let Some(cs) = get_color_chars(file_type.unwrap(), permissions.unwrap(), &color_chars.unwrap()) {
+        let color_chars = get_color_chars(
+            file_type.unwrap(),
+            permissions.unwrap()
+            , &color_chars.unwrap()
+        );
+        if let Some(cs) = color_chars {
             str = to_ansi_string(file_name, cs.0, cs.1).to_string();
         } else {
             str = file_name.to_string();

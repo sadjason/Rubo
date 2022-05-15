@@ -1,4 +1,4 @@
-use super::{Cmd, Args, Conf};
+use super::{Cmd, CmdResult, Args, Conf};
 
 pub(super) struct Command;
 
@@ -17,8 +17,9 @@ impl Cmd for Command {
             .about("just like wd")
     }
 
-    fn process(&self, _args: &Args) {
+    fn process(&self, _args: &Args) -> CmdResult {
         // 类似于 `wd`
         // 参考 cd
+        Ok(())
     }
 }
