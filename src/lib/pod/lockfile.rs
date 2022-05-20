@@ -130,9 +130,6 @@ impl Lockfile {
                 }
             }
         }
-        // for i in result.values() {
-        //     println!("name: {:?}, vers: {:?}, parents: {:?}, children: {:?}", i.name, i.vers, i.parents, i.children);
-        // }
         Ok(result)
     }
 

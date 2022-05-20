@@ -36,18 +36,24 @@ fn travel_and_print<P: AsRef<Path>>(
     let travel = Travel::new(mode,&pods);
     travel.collect(
         target.to_string(),
-        "".to_string(),
+        Chain { value: "".to_string(), depth: 0 },
         &result
     );
     let r = Rc::borrow(&mut result);
     let mut r = RefCell::borrow_mut(r);
     r.remove(&target.to_string());
     let mut chains = r.values()
-        .map(|s| s.as_str())
+        .map(|s| s.value.as_str())
         .collect::<Vec<&str>>();
     chains.sort();
     printer::print_pretty_chains(chains.into_iter(), max_depth);
     Ok(())
+}
+
+#[derive(Clone)]
+struct Chain {
+    value: String,
+    depth: usize,
 }
 
 struct Travel<'a> {
@@ -56,19 +62,22 @@ struct Travel<'a> {
 }
 
 enum TravelMode { Parents, Children }
-type TravelResult = Rc<RefCell<HashMap<String, String>>>;
+type TravelResult = Rc<RefCell<HashMap<String, Chain>>>;
 
 impl<'a> Travel<'a> {
     fn new(mode: TravelMode, source: &'a HashMap<String, PodItem>) -> Self {
         Self { mode, source }
     }
 
-    fn collect(&self, target: String, chain: String, result: &TravelResult) {
+    fn collect(&self, target: String, chain: Chain, result: &TravelResult) {
         {
             let r = Rc::borrow(result);
             let r = RefCell::borrow(r);
-            if r.contains_key(&target) {
-                return
+            if let Some(exist) = r.get(&target) {
+                // 保留路径更短的那一个
+                if exist.depth <= chain.depth {
+                    return;
+                }
             }
         }
         {
@@ -82,8 +91,13 @@ impl<'a> Travel<'a> {
                 TravelMode::Children => { &pod.children }
             };
         for c in iter {
-            let chain = format!("{}:{}", chain, c);
-            self.collect(c.clone(), chain, result);
+            let depth: usize = chain.depth + 1;
+            let value = if depth > 1 {
+                format!("{}:{}", chain.value, c)
+            } else {
+                c.clone()
+            };
+            self.collect(c.clone(), Chain { value, depth }, result);
         }
     }
 }
@@ -95,9 +109,7 @@ mod printer {
         where T: IntoIterator<Item = &'a str> {
         for chain in chains {
             let comps = chain.split(":").collect::<Vec<&str>>();
-            let mut depth = comps.len();
-            if depth <= 1 { continue }
-            depth -= 1; // fix depth
+            let depth = comps.len();
             if depth > max_depth {
                 continue
             }
