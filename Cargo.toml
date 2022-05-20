@@ -1,6 +1,6 @@
 [package]
 name = "rubo"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "credit to rubo"
@@ -19,3 +19,4 @@ bytesize = "1.1.0"
 yaml-rust = "0.4"
 anyhow = "1.0"
 regex = "1.5"
+ignore = "0.4"

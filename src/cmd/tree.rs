@@ -35,7 +35,7 @@ impl Cmd for Command {
             .arg(arg!(-L --level <LEVEL> "Max display depth of the directory tree")
                 .required(false)
             )
-            .arg(arg!(-a --all "All files are printed. By default tree does not print hidden files (those beginning with a dot '.')")
+            .arg(arg!(-a --all "All files are printed. By default tree will respect your .gitignore and automatically skip hidden files/directories(those beginning with a dot '.')")
                 .required(false)
             )
             .arg(arg!(-l --"follow-symbolic" "Follows symbolic links if they point to directories, as if they were directories. Symbolic links that will result in recursion are avoided when detected")
@@ -64,7 +64,7 @@ impl Cmd for Command {
         walker.max_depth(depth);
 
         // parse `all`
-        walker.ignore_hidden(args.occurrences_of("all") < 1);
+        walker.hide_ignore(args.occurrences_of("all") < 1);
 
         // parse `follow-symbolic`
         walker.follow_symbolic(args.occurrences_of("follow-symbolic") > 0);

@@ -7,6 +7,7 @@ use std::fs::{DirEntry, FileType, Metadata, Permissions};
 use std::iter::{IntoIterator};
 use std::os::unix::fs::MetadataExt;
 use once_cell::unsync::OnceCell;
+use ignore::gitignore::Gitignore;
 
 pub struct WakerEntry {
     // inner DirEntry
@@ -62,8 +63,8 @@ pub struct Walker {
     max_depth: Option<usize>,
     // 描述遇到 symbolic link 是否继续继续 walk
     follow_symbolic: bool,
-    // 是否忽略隐藏文件
-    ignore_hidden: bool,
+    // 是否忽略隐藏文件和 .gitignore 里的文件
+    hide_ignore: bool,
     // 按名字排序（开启后会影响效率）
     sort_by_name: bool,
 }
@@ -74,7 +75,7 @@ impl Walker {
             root: root.as_ref().to_path_buf(),
             max_depth: None,
             follow_symbolic: false,
-            ignore_hidden: true,
+            hide_ignore: true,
             sort_by_name: true,
         }
     }
@@ -84,8 +85,8 @@ impl Walker {
         self
     }
 
-    pub fn ignore_hidden(&mut self, hidden: bool) -> &mut Self {
-        self.ignore_hidden = hidden;
+    pub fn hide_ignore(&mut self, hidden: bool) -> &mut Self {
+        self.hide_ignore = hidden;
         self
     }
 
@@ -95,10 +96,32 @@ impl Walker {
     }
 
     pub fn start(&self, cb: &dyn Fn(WakerEntry)) -> io::Result<()> {
-        self.visit_dir(self.root.as_path(),1, cb)
+        let gitignore =
+            if self.hide_ignore {
+                let mut gitignore_path: Option<PathBuf> = None;
+                let mut path: Option<&Path> = Some(&self.root.as_path());
+                while let Some(p) = path {
+                    if p.is_dir() {
+                        let tmp_path = p.join(".gitignore");
+                        if tmp_path.exists() {
+                            gitignore_path = Some(tmp_path.clone());
+                            break
+                        }
+                    }
+                    path = p.parent();
+                }
+                gitignore_path
+                    .map(|p| Gitignore::new(p) )
+                    .and_then(|t| {
+                        if t.0.is_empty() { None } else { Some(t.0) }
+                    })
+            } else {
+                None
+            };
+        self.visit_dir(self.root.as_path(),&gitignore, 1, cb)
     }
 
-    fn visit_dir(&self, dir: &Path, depth: usize, cb: &dyn Fn(WakerEntry)) -> io::Result<()> {
+    fn visit_dir(&self, dir: &Path, gitignore: &Option<Gitignore>, depth: usize, cb: &dyn Fn(WakerEntry)) -> io::Result<()> {
         if let Some(max_depth) = self.max_depth {
             if depth > max_depth {
                 return Ok(())
@@ -107,16 +130,23 @@ impl Walker {
 
         let handle_entry = |entry: DirEntry, has_next_sibling: bool| -> io::Result<()> {
             let path = entry.path();
-            if self.ignore_hidden && entry.file_name().to_str().unwrap_or("unknown").starts_with('.') {
-                return Ok(())
+            if self.hide_ignore {
+                if entry.file_name().to_str().unwrap_or("unknown").starts_with('.') {
+                    return Ok(())
+                }
+                if let Some(gi) = gitignore {
+                    if gi.matched(&path, path.is_dir()).is_ignore() {
+                        return  Ok(())
+                    }
+                }
             }
             let entry = WakerEntry::new(entry, depth, has_next_sibling);
             let file_type = entry.file_type()?;
             cb(entry);
             if file_type.is_dir() {
-                self.visit_dir(&path, depth + 1, cb)?;
+                self.visit_dir(&path, gitignore, depth + 1, cb)?;
             } else if file_type.is_symlink() && self.follow_symbolic {
-                self.visit_dir(&path, depth + 1, cb)?;
+                self.visit_dir(&path, gitignore,depth + 1, cb)?;
             } else {
                 // do nothing
             }
