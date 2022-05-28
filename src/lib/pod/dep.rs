@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::cell::RefCell;
 use std::rc::Rc;
-use anyhow;
+use anyhow::bail;
 use super::lockfile::Lockfile;
 use crate::lib::pod::lockfile::PodItem;
 
@@ -31,6 +31,9 @@ fn travel_and_print<P: AsRef<Path>>(
 ) -> anyhow::Result<()> {
     let lockfile = Lockfile::from_file(path)?;
     let pods = lockfile.pods()?;
+    if !pods.contains_key(target) {
+        bail!("Cannot find {} in Podfile.lock", target);
+    }
 
     let mut result = TravelResult::new(RefCell::new(HashMap::new()));
     let travel = Travel::new(mode,&pods);

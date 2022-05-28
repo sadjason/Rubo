@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::boxed::Box;
 use clap::{Command, ArgMatches};
+use ansi_term::{Colour, Style};
 
 type Conf = Command<'static>;
 type Args = ArgMatches;
@@ -60,7 +61,11 @@ impl Container {
             let key = sub_cmd.to_string();
             let cmd = self.commands.get(&key).unwrap();
             if let Err(e) = cmd.process(sub_args) {
-                println!("process {} failed. err: {:?}", &sub_cmd, e);
+                println!(
+                    "Process {} failed: {}",
+                    &sub_cmd,
+                    Style::from(Colour::Red).bold().paint(e.to_string()).to_string()
+                );
             }
         }
     }
